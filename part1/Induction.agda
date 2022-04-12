@@ -170,3 +170,59 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_)
 +-swap : ∀ (m n p : ℕ) → m + (n + p) ≡ n + (m + p)
 +-swap zero n p = refl
 +-swap (suc m) n p rewrite +-comm n (suc (m + p)) | +-comm (m + p) n | +-swap m n p = refl
+
+
+-- Exercise `*-distrib-+`
+
+*-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
+*-distrib-+ zero n p = refl
+*-distrib-+ (suc m) n p rewrite *-distrib-+ m n p | +-assoc p (m * p) (n * p) = refl
+
+
+-- Exercise `*-assoc`
+
+*-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc zero n p = refl
+*-assoc (suc m) n p rewrite *-distrib-+ n (m * n) p | *-assoc m n p = refl
+
+
+-- Exercise `*-comm`
+
+*-zero-r : ∀ (n : ℕ) → n * zero ≡ zero
+*-zero-r zero = refl
+*-zero-r (suc n) rewrite *-zero-r n = refl
+
+*-distrib-+-r : ∀ (m n p : ℕ) → m * (n + p) ≡ m * n + m * p
+*-distrib-+-r zero n p = refl
+*-distrib-+-r (suc m) n p rewrite *-distrib-+-r m n p | +-assoc n p (m * n + m * p) | +-swap p (m * n) (m * p) | +-assoc n (m * n) (p + m * p) = refl
+
+*-identityʳ : ∀ (n : ℕ) → n * 1 ≡ n
+*-identityʳ zero = refl
+*-identityʳ (suc n) rewrite *-identityʳ n = refl
+
+*-comm : ∀ (m n : ℕ) → m * n ≡ n * m
+*-comm zero n rewrite *-zero-r n = refl
+*-comm (suc m) n rewrite *-distrib-+-r n 1 m | *-comm m n | *-identityʳ n = refl
+
+
+-- Exercise `0∸n≡0`
+
+0∸n≡0 : ∀ (n : ℕ) → zero ∸ n ≡ zero
+0∸n≡0 zero = refl
+0∸n≡0 (suc n) = refl
+
+
+-- Exercise `∸-|-assoc`
+
+∸-|-assoc-suc : ∀ (m n : ℕ) → m ∸ suc n ≡ m ∸ 1 ∸ n
+∸-|-assoc-suc zero n rewrite 0∸n≡0 n = refl
+∸-|-assoc-suc (suc m) n = refl
+
+∸-|-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+∸-|-assoc m zero p = refl
+∸-|-assoc m (suc n) p
+  rewrite
+    ∸-|-assoc-suc m (n + p)
+    | ∸-|-assoc-suc m n
+    | ∸-|-assoc (m ∸ 1) n p
+    = refl
