@@ -283,13 +283,29 @@ from ⟨⟩ = 0
 from (b O) = from b * 2
 from (b I) = from b * 2 + 1
 
---- `bin-inc-suc`
 bin-inc-suc : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
 bin-inc-suc ⟨⟩ = refl
 bin-inc-suc (b O) rewrite +-comm (from b * 2) 1 = refl
 bin-inc-suc (b I) rewrite bin-inc-suc b | +-comm (from b * 2) 1 = refl
 
---- `bin-to-from`
+-- bin-to-from : ∀ (b : Bin) → to (from b) ≡ b
+-- This does not hold.
+-- Counter example: `b = ⟨⟩ O`, where `from b = 0`, `to 0 = ⟨⟩` and `to (from (⟨⟩ O)) ‌= ⟨⟩ ≢ ⟨⟩ O‌‌‌`
+--
+-- If we assume `⟨⟩ O ≡ ⟨⟩` then it holds.
+-- A proof of this case is on the blow.
+
+bin-from-to : ∀ (n : ℕ) → from (to n) ≡ n
+bin-from-to zero = refl
+bin-from-to (suc n) rewrite bin-inc-suc (to n) | bin-from-to n = refl
+
+
+-- The following goes a proof of `to (from b) ≡ b` with a hypothesis of
+-- `⟨⟩ O ≡ ⟨⟩`.
+
+bin-null : ⟨⟩ O ≡ ⟨⟩
+bin-null = {!!}
+
 *-2 : ∀ (n : ℕ) → n * 2 ≡ n + n
 *-2 zero = refl
 *-2 (suc n) rewrite *-2 n | +-comm n (suc n) = refl
@@ -319,9 +335,6 @@ infixl 6 _++_
 ++-inc (x O) (y I) = refl
 ++-inc (x I) (y I) rewrite ++-inc x y = refl
 
--- How can we handle this?
-bin-null : ⟨⟩ O ≡ ⟨⟩
-bin-null = {!!}
 
 ++-twice : ∀ (b : Bin) → b ++ b ≡ b O
 ++-twice ⟨⟩ rewrite bin-null = refl
@@ -336,8 +349,3 @@ bin-to-from : ∀ (b : Bin) → to (from b) ≡ b
 bin-to-from ⟨⟩ = refl
 bin-to-from (b O) rewrite *-2 (from b) | to-distrib (from b) (from b) | bin-to-from b | ++-twice b = refl
 bin-to-from (b I) rewrite to-distrib (from b * 2) 1 | *-2 (from b) | to-distrib (from b) (from b) | bin-to-from b | ++-twice b | ++-identityʳ b = refl
-
---- `bin-from-to`
-bin-from-to : ∀ (n : ℕ) → from (to n) ≡ n
-bin-from-to zero = refl
-bin-from-to (suc n) rewrite bin-inc-suc (to n) | bin-from-to n = refl
