@@ -3,7 +3,7 @@ module part1.Induction where
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 
 -- Exercise
 
@@ -226,3 +226,118 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_)
     | ∸-|-assoc-suc m n
     | ∸-|-assoc (m ∸ 1) n p
     = refl
+
+
+-- Exercise `+*^`
+
+^-distribˡ-|-* : ∀ (m n p : ℕ) → m ^ (n + p) ≡ (m ^ n) * (m ^ p)
+^-distribˡ-|-* m zero p rewrite +-identityʳ (m ^ p) = refl
+^-distribˡ-|-* m (suc n) p rewrite ^-distribˡ-|-* m n p | *-assoc m (m ^ n) (m ^ p) = refl
+
+*-swap : ∀ (m n p : ℕ) → m * (n * p) ≡ n * (m * p)
+*-swap zero n p rewrite *-zero-r n = refl
+*-swap (suc m) n p rewrite *-distrib-+-r n p (m * p) | *-swap m n p = refl
+
+^-distribʳ-* : ∀ (m n p : ℕ) → (m * n) ^ p ≡ (m ^ p) * (n ^ p)
+^-distribʳ-* m n zero = refl
+^-distribʳ-* m n (suc p)
+  rewrite
+    ^-distribʳ-* m n p
+    | *-assoc m n ((m ^ p) * (n ^ p))
+    | *-swap n (m ^ p) (n ^ p)
+    | *-assoc m (m ^ p) (n * (n ^ p))
+    = refl
+
+^-identityˡ : ∀ (n : ℕ) → 1 ^ n ≡ 1
+^-identityˡ zero = refl
+^-identityˡ (suc n) rewrite ^-identityˡ n = refl
+
+^-*-assoc : ∀ (m n p : ℕ) → (m ^ n) ^ p ≡ m ^ (n * p)
+^-*-assoc m zero p rewrite ^-identityˡ p = refl
+^-*-assoc m (suc n) p
+  rewrite
+    ^-distribˡ-|-* m p (n * p)
+    | ^-distribʳ-* m (m ^ n) p
+    | ^-*-assoc m n p
+    = refl
+
+
+-- Exercise `Bin-laws`
+
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (b O) = b I
+inc (b I) = inc b O
+
+to : ℕ → Bin
+to zero = ⟨⟩
+to (suc n) = inc (to n)
+
+from : Bin → ℕ
+from ⟨⟩ = 0
+from (b O) = from b * 2
+from (b I) = from b * 2 + 1
+
+--- `bin-inc-suc`
+bin-inc-suc : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
+bin-inc-suc ⟨⟩ = refl
+bin-inc-suc (b O) rewrite +-comm (from b * 2) 1 = refl
+bin-inc-suc (b I) rewrite bin-inc-suc b | +-comm (from b * 2) 1 = refl
+
+--- `bin-to-from`
+*-2 : ∀ (n : ℕ) → n * 2 ≡ n + n
+*-2 zero = refl
+*-2 (suc n) rewrite *-2 n | +-comm n (suc n) = refl
+
+_++_ : Bin → Bin → Bin
+_++_ ⟨⟩ y = y
+_++_ (x O) ⟨⟩ = x O
+_++_ (x O) (y O) = (x ++ y) O
+_++_ (x O) (y I) = (x ++ y) I
+_++_ (x I) ⟨⟩ = x I
+_++_ (x I) (y O) = (x ++ y) I
+_++_ (x I) (y I) = (inc (x ++ y)) O
+
+infixl 6 _++_
+
+++-identityʳ : ∀ (b : Bin) → b ++ ⟨⟩ ≡ b
+++-identityʳ ⟨⟩ = refl
+++-identityʳ (b O) = refl
+++-identityʳ (b I) = refl
+
+++-inc : ∀ (x y : Bin) → inc x ++ y ≡ inc (x ++ y)
+++-inc x ⟨⟩ rewrite ++-identityʳ x | ++-identityʳ (inc x) = refl
+++-inc ⟨⟩ (y O) = refl
+++-inc (x O) (y O) = refl
+++-inc (x I) (y O) rewrite ++-inc x y = refl
+++-inc ⟨⟩ (y I) = refl
+++-inc (x O) (y I) = refl
+++-inc (x I) (y I) rewrite ++-inc x y = refl
+
+-- How can we handle this?
+bin-null : ⟨⟩ O ≡ ⟨⟩
+bin-null = {!!}
+
+++-twice : ∀ (b : Bin) → b ++ b ≡ b O
+++-twice ⟨⟩ rewrite bin-null = refl
+++-twice (b O) rewrite ++-twice b = refl
+++-twice (b I) rewrite ++-twice b = refl
+
+to-distrib : ∀ (m n : ℕ) → to (m + n) ≡ to m ++ to n
+to-distrib zero n = refl
+to-distrib (suc m) n rewrite to-distrib m n | ++-inc (to m) (to n) = refl
+
+bin-to-from : ∀ (b : Bin) → to (from b) ≡ b
+bin-to-from ⟨⟩ = refl
+bin-to-from (b O) rewrite *-2 (from b) | to-distrib (from b) (from b) | bin-to-from b | ++-twice b = refl
+bin-to-from (b I) rewrite to-distrib (from b * 2) 1 | *-2 (from b) | to-distrib (from b) (from b) | bin-to-from b | ++-twice b | ++-identityʳ b = refl
+
+--- `bin-from-to`
+bin-from-to : ∀ (n : ℕ) → from (to n) ≡ n
+bin-from-to zero = refl
+bin-from-to (suc n) rewrite bin-inc-suc (to n) | bin-from-to n = refl
