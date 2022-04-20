@@ -124,11 +124,10 @@ module ≃-Reasoning where
     → A ≃ C
   _ ≃⟨ AB ⟩ BC = ≃-trans AB BC
 
-  _≃-∎ : ∀ {A B : Set}
-    → A ≃ B
+  _≃-∎ : ∀ (A : Set)
       -----
-    → A ≃ B
-  AB ≃-∎ = AB
+    → A ≃ A
+  A ≃-∎ = ≃-refl
 
 open ≃-Reasoning
 
