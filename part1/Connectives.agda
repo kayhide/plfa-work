@@ -144,43 +144,43 @@ truth′ = tt′
 
 --
 
-data _⨄_ (A B : Set) : Set where
-  inj₁ : A → A ⨄ B
-  inj₂ : B → A ⨄ B
+data _⊎_ (A B : Set) : Set where
+  inj₁ : A → A ⊎ B
+  inj₂ : B → A ⊎ B
 
-case-⨄ : ∀ {A B C : Set}
+case-⊎ : ∀ {A B C : Set}
   → (A → C)
   → (B → C)
-  → A ⨄ B
+  → A ⊎ B
     -------
   → C
-case-⨄ AC BC (inj₁ x) = AC x
-case-⨄ AC BC (inj₂ x) = BC x
+case-⊎ AC BC (inj₁ x) = AC x
+case-⊎ AC BC (inj₂ x) = BC x
 
-η-⨄ : ∀ {A B : Set} (w : A ⨄ B) → case-⨄ inj₁ inj₂ w ≡ w
-η-⨄ (inj₁ x) = refl
-η-⨄ (inj₂ x) = refl
+η-⊎ : ∀ {A B : Set} (w : A ⊎ B) → case-⊎ inj₁ inj₂ w ≡ w
+η-⊎ (inj₁ x) = refl
+η-⊎ (inj₂ x) = refl
 
-uniq-⨄ : ∀ {A B C : Set} (h : A ⨄ B → C) (w : A ⨄ B) →
-  case-⨄ (h ∘ inj₁) (h ∘ inj₂) w ≡ h w
-uniq-⨄ h (inj₁ x) = refl
-uniq-⨄ h (inj₂ x) = refl
+uniq-⊎ : ∀ {A B C : Set} (h : A ⊎ B → C) (w : A ⊎ B) →
+  case-⊎ (h ∘ inj₁) (h ∘ inj₂) w ≡ h w
+uniq-⊎ h (inj₁ x) = refl
+uniq-⊎ h (inj₂ x) = refl
 
-infixr 1 _⨄_
-
-
-⨄-count : Bool ⨄ Tri → ℕ
-⨄-count (inj₁ true) = 1
-⨄-count (inj₁ false) = 2
-⨄-count (inj₂ aa) = 3
-⨄-count (inj₂ bb) = 4
-⨄-count (inj₂ cc) = 5
+infixr 1 _⊎_
 
 
--- Exercise `⨄-comm`
+⊎-count : Bool ⊎ Tri → ℕ
+⊎-count (inj₁ true) = 1
+⊎-count (inj₁ false) = 2
+⊎-count (inj₂ aa) = 3
+⊎-count (inj₂ bb) = 4
+⊎-count (inj₂ cc) = 5
 
-⨄-comm : ∀ {A B : Set} → A ⨄ B ≃ B ⨄ A
-⨄-comm =
+
+-- Exercise `⊎-comm`
+
+⊎-comm : ∀ {A B : Set} → A ⊎ B ≃ B ⊎ A
+⊎-comm =
   record
     { to = λ { (inj₁ x) → inj₂ x ; (inj₂ x) → inj₁ x }
     ; from = λ { (inj₁ y) → inj₂ y ; (inj₂ y) → inj₁ y }
@@ -189,10 +189,10 @@ infixr 1 _⨄_
     }
 
 
--- Exercise `⨄-assoc`
+-- Exercise `⊎-assoc`
 
-⨄-assoc : ∀ {A B C : Set} → (A ⨄ B) ⨄ C ≃ A ⨄ (B ⨄ C)
-⨄-assoc =
+⊎-assoc : ∀ {A B C : Set} → (A ⊎ B) ⊎ C ≃ A ⊎ (B ⊎ C)
+⊎-assoc =
   record
     { to = λ { (inj₁ (inj₁ x)) → inj₁ x ; (inj₁ (inj₂ x)) → inj₂ (inj₁ x) ; (inj₂ x) → inj₂ (inj₂ x) }
     ; from = λ { (inj₁ x) → inj₁ (inj₁ x) ; (inj₂ (inj₁ x)) → inj₁ (inj₂ x) ; (inj₂ (inj₂ x)) → inj₂ x }
@@ -217,7 +217,7 @@ uniq-⊥ h ()
 
 -- Exercise `⊥-identityˡ`
 
-⊥-identityˡ : ∀ {A : Set} → ⊥ ⨄ A ≃ A
+⊥-identityˡ : ∀ {A : Set} → ⊥ ⊎ A ≃ A
 ⊥-identityˡ =
   record
     { to = λ { (inj₂ x) → x }
@@ -229,12 +229,12 @@ uniq-⊥ h ()
 
 -- Exercise `⊥-identityʳ`
 
-⊥-identityʳ : ∀ {A : Set} → A ⨄ ⊥ ≃ A
+⊥-identityʳ : ∀ {A : Set} → A ⊎ ⊥ ≃ A
 ⊥-identityʳ {A} =
   ≃-begin
-    (A ⨄ ⊥)
-  ≃⟨ ⨄-comm ⟩
-    (⊥ ⨄ A)
+    (A ⊎ ⊥)
+  ≃⟨ ⊎-comm ⟩
+    (⊥ ⊎ A)
   ≃⟨ ⊥-identityˡ ⟩
     A
   ≃-∎
@@ -274,8 +274,8 @@ currying =
     ; to∘from = λ g → extensionality (λ { ⟨ x , y ⟩ → refl })
     }
 
-→-distrib-⨄ : ∀ {A B C : Set} → (A ⨄ B → C) ≃ ((A → C) × (B → C))
-→-distrib-⨄ =
+→-distrib-⊎ : ∀ {A B C : Set} → (A ⊎ B → C) ≃ ((A → C) × (B → C))
+→-distrib-⊎ =
   record
     { to = λ f → ⟨ f ∘ inj₁ , f ∘ inj₂ ⟩
     ; from = λ { ⟨ g , h ⟩ → λ { (inj₁ x) → g x ; (inj₂ x) → h x } }
@@ -292,8 +292,8 @@ currying =
     ; to∘from = λ { ⟨ g , h ⟩ → refl }
     }
 
-×-distrib-⨄ : ∀ {A B C : Set} → (A ⨄ B) × C ≃ (A × C) ⨄ (B × C)
-×-distrib-⨄ =
+×-distrib-⊎ : ∀ {A B C : Set} → (A ⊎ B) × C ≃ (A × C) ⊎ (B × C)
+×-distrib-⊎ =
   record
     { to = λ { ⟨ inj₁ x , z ⟩ → inj₁ ⟨ x , z ⟩ ; ⟨ inj₂ y , z ⟩ → inj₂ ⟨ y , z ⟩ }
     ; from = λ { (inj₁ ⟨ x , z ⟩) → ⟨ inj₁ x , z ⟩ ; (inj₂ ⟨ y , z ⟩) → ⟨ inj₂ y , z ⟩ }
@@ -301,8 +301,8 @@ currying =
     ; to∘from = λ { (inj₁ ⟨ x , z ⟩) → refl ; (inj₂ ⟨ y , z ⟩) → refl }
     }
 
-⨄-distrib-× : ∀ {A B C : Set} → (A × B) ⨄ C ≲ (A ⨄ C) × (B ⨄ C)
-⨄-distrib-× =
+⊎-distrib-× : ∀ {A B C : Set} → (A × B) ⊎ C ≲ (A ⊎ C) × (B ⊎ C)
+⊎-distrib-× =
   record
     { to = λ { (inj₁ ⟨ x , y ⟩) → ⟨ inj₁ x , inj₁ y ⟩
              ; (inj₂ z) → ⟨ inj₂ z , inj₂ z ⟩
@@ -317,18 +317,18 @@ currying =
     }
 
 
--- Exercise `⨄-weak-×`
+-- Exercise `⊎-weak-×`
 
-⨄-weak-× : ∀ {A B C : Set} → (A ⨄ B) × C → A ⨄ (B × C)
-⨄-weak-× ⟨ inj₁ x , z ⟩ = inj₁ x
-⨄-weak-× ⟨ inj₂ y , z ⟩ = inj₂ ⟨ y , z ⟩
+⊎-weak-× : ∀ {A B C : Set} → (A ⊎ B) × C → A ⊎ (B × C)
+⊎-weak-× ⟨ inj₁ x , z ⟩ = inj₁ x
+⊎-weak-× ⟨ inj₂ y , z ⟩ = inj₂ ⟨ y , z ⟩
 
 
--- Exercise `⨄×-implies-×⨄`
+-- Exercise `⊎×-implies-×⊎`
 
-⨄×-implies-×⨄ : ∀ {A B C D : Set} → (A × B) ⨄ (C × D) → (A ⨄ C) × (B ⨄ D)
-⨄×-implies-×⨄ (inj₁ ⟨ a , b ⟩) = ⟨ inj₁ a , inj₁ b ⟩
-⨄×-implies-×⨄ (inj₂ ⟨ c , d ⟩) = ⟨ inj₂ c , inj₂ d ⟩
+⊎×-implies-×⊎ : ∀ {A B C D : Set} → (A × B) ⊎ (C × D) → (A ⊎ C) × (B ⊎ D)
+⊎×-implies-×⊎ (inj₁ ⟨ a , b ⟩) = ⟨ inj₁ a , inj₁ b ⟩
+⊎×-implies-×⊎ (inj₂ ⟨ c , d ⟩) = ⟨ inj₂ c , inj₂ d ⟩
 
 -- The converse does not hold.
 -- Counter example: ⟨ inj₁ a , inj₂ d ⟩
