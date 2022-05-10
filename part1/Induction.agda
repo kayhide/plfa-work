@@ -288,23 +288,21 @@ bin-inc-suc ⟨⟩ = refl
 bin-inc-suc (b O) rewrite +-comm (from b * 2) 1 = refl
 bin-inc-suc (b I) rewrite bin-inc-suc b | +-comm (from b * 2) 1 = refl
 
--- bin-to-from : ∀ (b : Bin) → to (from b) ≡ b
--- This does not hold.
--- Counter example: `b = ⟨⟩ O`, where `from b = 0`, `to 0 = ⟨⟩` and `to (from (⟨⟩ O)) ‌= ⟨⟩ ≢ ⟨⟩ O‌‌‌`
---
--- If we assume `⟨⟩ O ≡ ⟨⟩` then it holds.
--- A proof of this case is on the blow.
-
 bin-from-to : ∀ (n : ℕ) → from (to n) ≡ n
 bin-from-to zero = refl
 bin-from-to (suc n) rewrite bin-inc-suc (to n) | bin-from-to n = refl
 
 
+-- bin-to-from : ∀ (b : Bin) → to (from b) ≡ b
+-- This does not hold.
+-- Counter example: `b = ⟨⟩ O`, where `from b = 0`, `to 0 = ⟨⟩` and `to (from (⟨⟩ O)) ‌= ⟨⟩ ≢ ⟨⟩ O‌‌‌`
+--
+-- If we assume `⟨⟩ O ≡ ⟨⟩` then it holds.
 -- The following goes a proof of `to (from b) ≡ b` with a hypothesis of
 -- `⟨⟩ O ≡ ⟨⟩`.
 
-bin-null : ⟨⟩ O ≡ ⟨⟩
-bin-null = {!!}
+postulate
+  bin-null : ⟨⟩ O ≡ ⟨⟩
 
 *-2 : ∀ (n : ℕ) → n * 2 ≡ n + n
 *-2 zero = refl
