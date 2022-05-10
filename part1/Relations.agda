@@ -126,14 +126,14 @@ data Total (m n : ℕ) : Set where
 infix 4 _<_
 
 data _<_ : ℕ → ℕ → Set where
-  z<n : ∀ {n : ℕ} → zero < suc n
+  z<s : ∀ {n : ℕ} → zero < suc n
   s<s : ∀ {m n : ℕ} → m < n → suc m < suc n
 
 
 -- Exercise `<-trans`
 
 <-trans : ∀ {m n p : ℕ} → m < n → n < p → m < p
-<-trans z<n (s<s n<p) = z<n
+<-trans z<s (s<s n<p) = z<s
 <-trans (s<s m<n) (s<s n<p) = s<s (<-trans m<n n<p)
 
 
@@ -149,8 +149,8 @@ data Trichotomy (m n : ℕ) : Set where
 
 <-tricotomy : ∀ (m n : ℕ) → Trichotomy m n
 <-tricotomy zero zero = eql refl
-<-tricotomy zero (suc n) = asc z<n
-<-tricotomy (suc m) zero = desc z<n
+<-tricotomy zero (suc n) = asc z<s
+<-tricotomy (suc m) zero = desc z<s
 <-tricotomy (suc m) (suc n) with <-tricotomy m n
 ... | asc m<n = asc (s<s m<n)
 ... | eql m≡n = eql (cong suc m≡n)
@@ -173,11 +173,11 @@ data Trichotomy (m n : ℕ) : Set where
 -- Exercise `≤-iff-<`
 
 ≤-< : ∀ (m n : ℕ) → suc m ≤ n → m < n
-≤-< zero .(suc _) (s≤s sm≤n) = z<n
+≤-< zero .(suc _) (s≤s sm≤n) = z<s
 ≤-< (suc m) .(suc _) (s≤s sm≤n) = s<s (≤-< m _ sm≤n)
 
 <-≤ : ∀ (m n : ℕ) → m < n → suc m ≤ n
-<-≤ zero .(suc _) z<n = s≤s z≤n
+<-≤ zero .(suc _) z<s = s≤s z≤n
 <-≤ (suc m) .(suc _) (s<s m<n) = s≤s (<-≤ m _ m<n)
 
 
