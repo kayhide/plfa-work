@@ -1,14 +1,16 @@
 module part1.Lists where
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; trans; cong)
+open Eq using (_≡_; refl; sym; trans; cong; cong-app)
 open Eq.≡-Reasoning
 open import Data.Bool using (Bool; true; false; T; _∧_; _∨_; not)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using
   (+-assoc; +-identityˡ; +-identityʳ; *-assoc; *-identityˡ; *-identityʳ; +-∸-comm)
 open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Data.Product using (_×_; ∃; ∃-syntax) renaming (_,_ to ⟨_,_⟩)
+open import Data.Product using (_×_; proj₁; proj₂; map₁; ∃; ∃-syntax; curry; uncurry) renaming (_,_ to ⟨_,_⟩)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Empty using (⊥-elim)
 open import Function using (_∘_)
 open import Level using (Level)
 open import part1.Isomorphism using (_≃_; _⇔_; extensionality)
@@ -449,3 +451,290 @@ foldr-monoid-foldl _⊗_ e ⊗-monoid = extensionality (foldr-monoid-foldl′ _�
 
 
 ----
+
+data All {A : Set} (P : A → Set) : List A → Set where
+  [] : All P []
+  _∷_ : ∀ {x : A} {xs : List A} → P x → All P xs → All P (x ∷ xs)
+
+_ : All (_≤ 2) [ 0 , 1 , 2 ]
+_ = z≤n ∷ s≤s z≤n ∷ s≤s (s≤s z≤n) ∷ []
+
+
+data Any {A : Set} (P : A → Set) : List A → Set where
+  here : ∀ {x : A} {xs : List A} → P x → Any P (x ∷ xs)
+  there : ∀ {x : A} {xs : List A} → Any P xs → Any P (x ∷ xs)
+
+infix 4 _∈_ _∉_
+
+_∈_ : ∀ {A : Set} (x : A) (xs : List A) → Set
+x ∈ xs = Any (x ≡_) xs
+
+_∉_ : ∀ {A : Set} (x : A) (xs : List A) → Set
+x ∉ xs = ¬ (x ∈ xs)
+
+_ : 0 ∈ [ 0 , 1 , 0 , 2 ]
+_ = here refl
+
+_ : 0 ∈ [ 0 , 1 , 0 , 2 ]
+_ = there (there (here refl))
+
+not-in : 3 ∉ [ 0 , 1 , 0 , 2 ]
+not-in (here ())
+not-in (there (here ()))
+not-in (there (there (here ())))
+not-in (there (there (there (here ()))))
+not-in (there (there (there (there ()))))
+
+
+All-++-⇔ : ∀ {A : Set} {P : A → Set}
+  → (xs ys : List A)
+  → All P (xs ++ ys) ⇔ (All P xs × All P ys)
+All-++-⇔ xs ys = record { to = to xs ys ; from = from xs ys }
+  where
+    to : ∀ {A : Set} {P : A → Set}
+      → (xs ys : List A)
+      → All P (xs ++ ys) → (All P xs × All P ys)
+    to [] ys Pys = ⟨ [] , Pys ⟩
+    to (x ∷ xs) ys (Px ∷ Pxsys) with to xs ys Pxsys
+    ... | ⟨ Pxs , Pys ⟩ = ⟨ Px ∷ Pxs , Pys ⟩
+
+    from : ∀ {A : Set} {P : A → Set}
+      → (xs ys : List A)
+      → (All P xs × All P ys) → All P (xs ++ ys)
+    from [] ys ⟨ _ , Pys ⟩ = Pys
+    from (x ∷ xs) ys ⟨ Px ∷ Pxs , Pys ⟩ = Px ∷ from xs ys ⟨ Pxs , Pys ⟩
+
+
+-- Exercise `Any-++-⇔`
+
+Any-++-⇔ : ∀ {A : Set} {P : A → Set}
+  → (xs ys : List A)
+  → Any P (xs ++ ys) ⇔ (Any P xs ⊎ Any P ys)
+Any-++-⇔ xs ys = record { to = to xs ys ; from = from xs ys }
+  where
+    to : ∀ {A : Set} {P : A → Set}
+      → (xs ys : List A)
+      → Any P (xs ++ ys) → (Any P xs ⊎ Any P ys)
+    to [] .(_ ∷ _) (here Py) = inj₂ (here Py)
+    to [] .(_ ∷ _) (there p) = inj₂ (there p)
+    to (x ∷ xs) ys (here Px) = inj₁ (here Px)
+    to (x ∷ xs) ys (there p) with to xs ys p
+    ... | inj₁ Pxs = inj₁ (there Pxs)
+    ... | inj₂ Pys = inj₂ Pys
+
+    from : ∀ {A : Set} {P : A → Set}
+      → (xs ys : List A)
+      → (Any P xs ⊎ Any P ys) → Any P (xs ++ ys)
+    from .(_ ∷ _) ys (inj₁ (here x)) = here x
+    from (x ∷ xs) ys (inj₁ (there Pxs)) = there (from xs ys (inj₁ Pxs))
+    from [] ys (inj₂ Pys) = Pys
+    from (x ∷ xs) ys (inj₂ Pys) = there (from xs ys (inj₂ Pys))
+
+
+∈-++-⇔ : ∀ {A : Set}
+  → (x : A)
+  → (xs ys : List A)
+  → (x ∈ (xs ++ ys)) ⇔ (x ∈ xs ⊎ x ∈ ys)
+∈-++-⇔ x xs ys = Any-++-⇔ xs ys
+
+
+-- Exercise `All-++-≃`
+
+All-++-≃ : ∀ {A : Set} {P : A → Set}
+  → (xs ys : List A)
+  → All P (xs ++ ys) ≃ (All P xs × All P ys)
+All-++-≃ {A} {P} xs ys =
+  record
+    { to = to xs ys
+    ; from = from xs ys
+    ; from∘to = from∘to xs ys
+    ; to∘from = to∘from xs ys
+    }
+  where
+    to : (xs ys : List A) → All P (xs ++ ys) → (All P xs × All P ys)
+    to xs ys = _⇔_.to (All-++-⇔ xs ys)
+
+    from : (xs ys : List A) → (All P xs × All P ys) → All P (xs ++ ys)
+    from xs ys = _⇔_.from (All-++-⇔ xs ys)
+
+    from∘to : ∀ (xs ys : List A) → (p : All P (xs ++ ys)) → from xs ys (to xs ys p) ≡ p
+    from∘to [] ys Pxsys = refl
+    from∘to (x ∷ xs) ys (Px ∷ Pxsys) =
+      begin
+        from (x ∷ xs) ys (to (x ∷ xs) ys (Px ∷ Pxsys))
+      ≡⟨⟩
+        Px ∷ from xs ys (to xs ys Pxsys)
+      ≡⟨ cong (Px ∷_) (from∘to xs ys Pxsys) ⟩
+        Px ∷ Pxsys
+      ∎
+
+    to∘from : (xs ys : List A) → (q : All P xs × All P ys) → to xs ys (from xs ys q) ≡ q
+    to∘from [] ys ⟨ [] , Pys ⟩ = refl
+    to∘from (x ∷ xs) ys ⟨ Px ∷ Pxs , Pys ⟩ =
+      begin
+        to (x ∷ xs) ys (from (x ∷ xs) ys ⟨ Px ∷ Pxs , Pys ⟩)
+      ≡⟨⟩
+        to (x ∷ xs) ys (Px ∷ from xs ys ⟨ Pxs , Pys ⟩)
+      ≡⟨⟩
+        map₁ (Px ∷_) (to xs ys (from xs ys ⟨ Pxs , Pys ⟩))
+      ≡⟨ cong (map₁ (Px ∷_)) (to∘from xs ys ⟨ Pxs , Pys ⟩) ⟩
+        map₁ (Px ∷_) ⟨ Pxs , Pys ⟩
+      ≡⟨⟩
+        ⟨ Px ∷ Pxs , Pys ⟩
+      ∎
+
+
+-- Exercise `¬Any⇔All¬`
+
+¬Any⇔All¬ : ∀ {A : Set} {P : A → Set}
+  → (xs : List A)
+  → (¬_ ∘ Any P) xs ⇔ All (¬_ ∘ P) xs
+¬Any⇔All¬ xs = record { to = to xs ; from = from xs}
+  where
+    to : ∀ {A : Set} {P : A → Set}
+      → (xs : List A)
+      → (¬_ ∘ Any P) xs → All (¬_ ∘ P) xs
+    to [] p = []
+    to (x ∷ xs) p = (λ Px → p (here Px)) ∷ to xs (λ Pxs → p (there Pxs))
+
+    from : ∀ {A : Set} {P : A → Set}
+      → (xs : List A)
+      → All (¬_ ∘ P) xs → (¬_ ∘ Any P) xs
+    from [] p ()
+    from (x ∷ xs) (¬Px ∷ ¬Pxs) = λ
+      { (here Px) → ¬Px Px
+      ; (there Pxs) → from xs ¬Pxs Pxs
+      }
+
+-- The following does not hold.
+-- (¬_ ∘ All P) xs ⇔ Any (¬_ ∘ P) xs
+-- This is as seen at exercise `⊎-dual-×` at `Nagation`,
+-- there is no construction of `All P xs` and lhs ⇒ rhs does not hold.
+-- And lhs ⇐ rhs holds as the following
+
+
+Any¬→¬All : ∀ {A : Set} {P : A → Set}
+  → (xs : List A)
+  → Any (¬_ ∘ P) xs → (¬_ ∘ All P) xs
+Any¬→¬All [] ()
+Any¬→¬All (x ∷ xs) (here ¬Px) = λ { (Px ∷ _) → ¬Px Px }
+Any¬→¬All (x ∷ xs) (there ¬Pxs) = λ { (_ ∷ Pxs) → ⊥-elim (Any¬→¬All xs ¬Pxs Pxs) }
+
+
+-- Exercise `¬Any≃All¬`
+
+¬Any≃All¬ : ∀ {A : Set} {P : A → Set}
+  → (xs : List A)
+  → (¬_ ∘ Any P) xs ≃ All (¬_ ∘ P) xs
+¬Any≃All¬ {A} {P} xs = record { to = to xs ; from = from xs ; from∘to = from∘to xs ; to∘from = to∘from xs }
+  where
+    to : (xs : List A) → (¬_ ∘ Any P) xs → All (¬_ ∘ P) xs
+    to xs = _⇔_.to (¬Any⇔All¬ xs)
+
+    from : (xs : List A) → All (¬_ ∘ P) xs → (¬_ ∘ Any P) xs
+    from xs = _⇔_.from (¬Any⇔All¬ xs)
+
+    from∘to : (xs : List A) (p : (¬_ ∘ Any P) xs) → from xs (to xs p) ≡ p
+    from∘to [] p = extensionality λ()
+    from∘to (x ∷ xs) p = extensionality λ
+      { (here Px) → refl
+      ; (there Pxs) →
+          begin
+            from (x ∷ xs) (to (x ∷ xs) p) (there Pxs)
+          ≡⟨⟩
+            from (x ∷ xs) ((p ∘ here) ∷ to xs (p ∘ there)) (there Pxs)
+          ≡⟨⟩
+            from xs (to xs (p ∘ there)) Pxs
+          ≡⟨ cong-app (from∘to xs (p ∘ there)) Pxs ⟩
+            p (there Pxs)
+          ∎
+      }
+
+    to∘from : (xs : List A) → (q : All (¬_ ∘ P) xs) → to xs (from xs q) ≡ q
+    to∘from [] [] = refl
+    to∘from (x ∷ xs) (¬Px ∷ ¬Pxs) =
+      begin
+        to (x ∷ xs) (from (x ∷ xs) (¬Px ∷ ¬Pxs))
+      ≡⟨⟩
+        to (x ∷ xs) (λ { (here Px) → ¬Px Px ; (there Pxs) → from xs ¬Pxs Pxs })
+      ≡⟨⟩
+        ¬Px ∷ to xs (from xs ¬Pxs)
+      ≡⟨ cong (¬Px ∷_) (to∘from xs ¬Pxs) ⟩
+        ¬Px ∷ ¬Pxs
+      ∎
+
+
+-- Exercise `All-∀`
+
+postulate
+  extensionality₂ : ∀ {A : Set} {B C : A → Set} {f g : (x : A) → B x → C x}
+    → (∀ (x : A) → (y : B x) → f x y ≡ g x y)
+    → f ≡ g
+
+cong-app₂ : ∀ {A : Set} {B C : A → Set} {f g : (x : A) → B x → C x}
+  → f ≡ g
+    ---------------------
+  → ∀ (x : A) (y : B x) → f x y ≡ g x y
+cong-app₂ refl _ _ = refl
+
+All-∀ : ∀ {A : Set} {P : A → Set} (xs : List A) → All P xs ≃ (∀ x → x ∈ xs → P x)
+All-∀ {A} {P} xs =
+  record
+    { to = to xs
+    ; from = from xs
+    ; from∘to = from∘to xs
+    ; to∘from = to∘from xs
+    }
+  where
+    to : (xs : List A) → All P xs → (∀ x → x ∈ xs → P x)
+    to (x ∷ _) (Px ∷ Pxs) x (here refl) = Px
+    to (_ ∷ xs) (Px ∷ Pxs) x (there x∈xs) = to xs Pxs x x∈xs
+
+    from : (xs : List A) → (∀ x → x ∈ xs → P x) → All P xs
+    from [] f = []
+    from (x ∷ xs) f = f x (here refl) ∷ from xs λ y y∈xs → f y (there y∈xs)
+
+    from∘to : (xs : List A) → (p : All P xs) → from xs (to xs p) ≡ p
+    from∘to [] [] = refl
+    from∘to (x ∷ xs) (Px ∷ Pxs) rewrite from∘to xs Pxs = refl
+
+    to∘from : (xs : List A) → (al : (∀ x → x ∈ xs → P x)) → to xs (from xs al) ≡ al
+    to∘from [] f = extensionality₂ λ x ()
+    to∘from (x ∷ xs) f = extensionality₂ λ
+      { y (here refl) → refl
+      ; y (there y∈xs) →
+          begin
+            to xs (from xs (λ z z∈xs → f z (there z∈xs))) y y∈xs
+          ≡⟨ cong-app₂ (to∘from xs (λ z z∈xs → f z (there z∈xs))) y y∈xs ⟩
+            f y (there y∈xs)
+          ∎
+      }
+
+
+-- Exercise `Any-∃`
+
+Any-∃ : ∀ {A : Set} {P : A → Set} (xs : List A) → Any P xs ≃ ∃[ x ] (x ∈ xs × P x)
+Any-∃ {A} {P} xs =
+  record
+    { to = to xs
+    ; from = from xs
+    ; from∘to = from∘to xs
+    ; to∘from = to∘from xs
+    }
+  where
+    to : (xs : List A) → Any P xs → ∃[ x ] (x ∈ xs × P x)
+    to (x ∷ _) (here Px) = ⟨ x , ⟨ here refl , Px ⟩ ⟩
+    to (_ ∷ xs) (there Pxs) with to xs Pxs
+    ... | ⟨ y , ⟨ Pys , Py ⟩ ⟩ = ⟨ y , ⟨ there Pys , Py ⟩ ⟩
+
+    from : (xs : List A) → ∃[ x ] (x ∈ xs × P x) → Any P xs
+    from (x ∷ _) ⟨ .x , ⟨ here refl , Px ⟩ ⟩ = here Px
+    from (_ ∷ xs) ⟨ y , ⟨ there Pys , Py ⟩ ⟩ = there (from xs ⟨ y , ⟨ Pys , Py ⟩ ⟩)
+
+    from∘to : (xs : List A) → (p : Any P xs) → from xs (to xs p) ≡ p
+    from∘to .(_ ∷ _) (here Px) = refl
+    from∘to (x ∷ xs) (there Pxs) rewrite from∘to xs Pxs = refl
+
+    to∘from : (xs : List A) → (ex : ∃[ x ] (x ∈ xs × P x)) → to xs (from xs ex) ≡ ex
+    to∘from (x ∷ _) ⟨ .x , ⟨ here refl , Px ⟩ ⟩ = refl
+    to∘from (_ ∷ xs) ⟨ y , ⟨ there Pys , Py ⟩ ⟩ rewrite to∘from xs ⟨ y , ⟨ Pys , Py ⟩ ⟩ = refl
