@@ -738,3 +738,57 @@ Any-∃ {A} {P} xs =
     to∘from : (xs : List A) → (ex : ∃[ x ] (x ∈ xs × P x)) → to xs (from xs ex) ≡ ex
     to∘from (x ∷ _) ⟨ .x , ⟨ here refl , Px ⟩ ⟩ = refl
     to∘from (_ ∷ xs) ⟨ y , ⟨ there Pys , Py ⟩ ⟩ rewrite to∘from xs ⟨ y , ⟨ Pys , Py ⟩ ⟩ = refl
+
+
+----
+
+all : ∀ {A : Set} → (A → Bool) → List A → Bool
+all p = foldr _∧_ true ∘ map p
+
+
+Decidable : ∀ {A : Set} → (A → Set) → Set
+Decidable {A} P = ∀ (x : A) → Dec (P x)
+
+
+All? : ∀ {A : Set} {P : A → Set} → Decidable P → Decidable (All P)
+All? P? [] = yes []
+All? P? (x ∷ xs) with P? x   | All? P? xs
+...                 | yes Px | yes Pxs    = yes (Px ∷ Pxs)
+...                 | yes _  | no ¬Pxs    = no λ { (_ ∷ Pxs) → ¬Pxs Pxs }
+...                 | no ¬Px | _          = no λ { (Px ∷ _) → ¬Px Px }
+
+
+-- Exercise `Any?`
+
+Any? : ∀ {A : Set} {P : A → Set} → Decidable P → Decidable (Any P)
+Any? P? [] = no λ()
+Any? P? (x ∷ xs) with P? x   | Any? P? xs
+...                 | yes Px | dxs        = yes (here Px)
+...                 | no ¬Px | yes Pxs    = yes (there Pxs)
+...                 | no ¬Px | no ¬Pxs    = no λ { (here Px) → ¬Px Px ; (there Pxs) → ¬Pxs Pxs }
+
+
+----
+
+data merge {A : Set} : (xs ys zs : List A) → Set where
+  [] : merge [] [] []
+
+  left-∷ : ∀ {x xs ys zs}
+    → merge xs ys zs
+    → merge (x ∷ xs) ys (x ∷ zs)
+
+  right-∷ : ∀ {y xs ys zs}
+    → merge xs ys zs
+    → merge xs (y ∷ ys) (y ∷ zs)
+
+
+_ : merge [ 1 , 4 ] [ 2 , 3 ] [ 1 , 2 , 3 , 4 ]
+_ = left-∷ (right-∷ (right-∷ (left-∷ [])))
+
+
+split : ∀ {A : Set} {P : A → Set} (P? : Decidable P) (zs : List A)
+  → ∃[ xs ] ∃[ ys ] (merge xs ys zs × All P xs × All (¬_ ∘ P) ys)
+split P? [] = ⟨ [] , ⟨ [] , ⟨ [] , ⟨ [] , [] ⟩ ⟩ ⟩ ⟩
+split P? (z ∷ zs) with P? z | split P? zs
+... | yes Pz | ⟨ xs , ⟨ ys , ⟨ m , ⟨ Pxs , ¬Pys ⟩ ⟩ ⟩ ⟩ = ⟨ z ∷ xs , ⟨ ys , ⟨ left-∷ m , ⟨ Pz ∷ Pxs , ¬Pys ⟩ ⟩ ⟩ ⟩
+... | no ¬Pz | ⟨ xs , ⟨ ys , ⟨ m , ⟨ Pxs , ¬Pys ⟩ ⟩ ⟩ ⟩ = ⟨ xs , ⟨ z ∷ ys , ⟨ right-∷ m , ⟨ Pxs , ¬Pz ∷ ¬Pys ⟩ ⟩ ⟩ ⟩
