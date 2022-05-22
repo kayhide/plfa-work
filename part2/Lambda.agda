@@ -167,22 +167,22 @@ _ = refl
 -- Exercise `_[_:=_]′`
 
 _[_:=_]′ : Term → Id → Term → Term
-go : Id → Term → Id → Term → Term
+go : Id → Id → Term → Term → Term
 
 (` x) [ y := V ]′ with x ≟ y
-... | yes _         = V
-... | no _          = ` x
-(ƛ x ⇒ N) [ y := V ]′ = ƛ x ⇒ go x N y V
-(L · M) [ y := V ]′  = L [ y := V ]′ · M [ y := V ]′
-`zero [ y := V ]′    = `zero
-(`suc M) [ y := V ]′ = `suc M [ y := V ]
+... | yes _           = V
+... | no _            = ` x
+(ƛ x ⇒ N) [ y := V ]′ = ƛ x ⇒ go x y N V
+(L · M) [ y := V ]′   = L [ y := V ]′ · M [ y := V ]′
+`zero [ y := V ]′     = `zero
+(`suc M) [ y := V ]′  = `suc M [ y := V ]′
 case L [zero⇒ M |suc x ⇒ N ] [ y := V ]′
-  = case L [ y := V ]′ [zero⇒ M [ y := V ] |suc x ⇒ go x N y V ]
-(μ x ⇒ N) [ y := V ]′ = μ x ⇒ go x N y V
+                      = case L [ y := V ]′ [zero⇒ M [ y := V ]′ |suc x ⇒ go x y N V ]
+(μ x ⇒ N) [ y := V ]′ = μ x ⇒ go x y N V
 
-go x N y V with x ≟ y
-... | yes _         = N
-... | no _          = N [ y := V ]′
+go x y N V with x ≟ y
+... | yes _ = N
+... | no _  = N [ y := V ]′
 
 
 _ : (ƛ "x" ⇒ ` "y") [ "y" := `zero ]′ ≡ ƛ "x" ⇒ `zero
