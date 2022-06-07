@@ -657,3 +657,159 @@ _ = refl
 -- expansion β-μ ⊢M = ⊢μ {!!}
 
 
+----
+
+Normal : Term → Set
+Normal M = ∀ {N} → ¬ (M —→ N)
+
+Stuck : Term → Set
+Stuck M = Normal M × ¬ Value M
+
+-- postulate
+--   unstuck : ∀ {M A}
+--     → ∅ ⊢ M ⦂ A
+--       -----------
+--     → ¬ (Stuck M)
+
+-- postulate
+--   preserves : ∀ {M N A}
+--     → ∅ ⊢ M ⦂ A
+--     → M —↠ N
+--       ---------
+--     → ∅ ⊢ N ⦂ A
+
+-- postulate
+--   wttdgs : ∀ {M N A}
+--     → ∅ ⊢ M ⦂ A
+--     → M —↠ N
+--       -----------
+--     → ¬ (Stuck N)
+
+
+-- Exercise `stuck`
+
+_ : Stuck (`zero · `zero)
+_ = ⟨ (λ { (ξ-·₁ ()) ; (ξ-·₂ V-zero ()) }) , (λ ()) ⟩
+
+
+-- Exercise `unstuck`
+
+unstuck : ∀ {M A}
+  → ∅ ⊢ M ⦂ A
+    -----------
+  → ¬ (Stuck M)
+unstuck ⊢M with progress ⊢M
+... | step M→N = λ { ⟨ ¬M→N , _ ⟩ → ¬M→N M→N }
+... | done VM = λ { ⟨ _ , ¬VM ⟩ → ¬VM VM }
+
+
+preserves : ∀ {M N A}
+  → ∅ ⊢ M ⦂ A
+  → M —↠ N
+    ---------
+  → ∅ ⊢ N ⦂ A
+preserves ⊢M (M ∎) = ⊢M
+preserves ⊢L (L —→⟨ L→M ⟩ M↠N) = preserves (preserve ⊢L L→M) M↠N
+
+
+wttdgs : ∀ {M N A}
+  → ∅ ⊢ M ⦂ A
+  → M —↠ N
+    -----------
+  → ¬ (Stuck N)
+wttdgs ⊢M M↠N = unstuck (preserves ⊢M M↠N)
+
+
+----
+
+cong₄ : ∀ {A B C D E : Set} (f : A → B → C → D → E)
+  {s w : A} {t x : B} {u y : C} {v z : D}
+  → s ≡ w → t ≡ x → u ≡ y → v ≡ z → f s t u v ≡ f w x y z
+cong₄ f refl refl refl refl = refl
+
+
+det : ∀ {M M′ M″}
+  → (M —→ M′)
+  → (M —→ M″)
+    ---------
+  → M′ ≡ M″
+det (ξ-·₁ f) (ξ-·₁ g) = cong₂ _·_ (det f g) refl
+det (ξ-·₁ f) (ξ-·₂ v _) = ⊥-elim (V¬—→ v f)
+det (ξ-·₂ v _) (ξ-·₁ g) = ⊥-elim (V¬—→ v g)
+det (ξ-·₂ _ f) (ξ-·₂ _ g) = cong₂ _·_ refl (det f g)
+det (ξ-·₂ _ f) (β-ƛ v) = ⊥-elim (V¬—→ v f)
+det (β-ƛ v) (ξ-·₂ _ g) = ⊥-elim (V¬—→ v g)
+det (β-ƛ _) (β-ƛ _) = refl
+det (ξ-suc f) (ξ-suc g) = cong `suc_ (det f g)
+det (ξ-case f) (ξ-case g) = cong₄ case_[zero⇒_|suc_⇒_]  (det f g) refl refl refl
+det (ξ-case f) (β-suc v) = ⊥-elim (V¬—→ (V-suc v) f)
+det β-zero β-zero = refl
+det (β-suc v) (ξ-case g) = ⊥-elim (V¬—→ (V-suc v) g)
+det (β-suc _) (β-suc _) = refl
+det β-μ β-μ = refl
+
+
+-- Quiz `zap`
+
+-- Determinism of `step`
+--  → becomes false
+-- conterexample: L · M
+--   (L · M) —→ L′ · M by (ξ-·₁ L→L′)
+--   (L · M) —→ zap by (β-zap)
+
+-- Progress
+--  → remains true
+
+-- Preservation
+--  → remains true
+
+
+-- Quiz `foo`
+
+-- Determinism of `step`
+--  → becomes false
+-- conterexample: (ƛ x ⇒ ` x) · V)
+--   (ƛ x ⇒ ` x) · V —→ ` x [ x := V ] by (β-ƛ)
+--   (ƛ x ⇒ ` x) · V —→ foo · V (ξ-·₁ β-foo₁)
+
+-- Progress
+--  → remains true
+
+-- Preservation
+--  → becomes false
+-- counterexample:
+--   (∅ ⊢ (ƛ x ⇒ ` x) ⦂ A ⇒ A) and
+--   ƛ x ⇒ ` x —→⟨ β-foo₁ ⟩ foo —→⟨ β-foo₂ ⟩ zero ∎
+--   makes (∅ ⊢ zero ⦂ `ℕ)
+--   but (A ⇒ A) ≢ `ℕ
+
+
+-- Quiz `no-ξ-·₁`
+
+-- Determinism of `step`
+--  → remains true
+
+-- Progress
+--  → becomes false
+-- counterexample: Stuck (((ƛ x ⇒ x) · L) · M)
+--   ((ƛ x ⇒ x) · L) cannot be reduced because of lack of ξ-·₁ and the whole term cannot be reduced any more.
+--   The term is Normal but not Value.
+
+-- Preservation
+--  → remains true
+
+
+-- Quiz `fᵢ`
+
+-- Determinism of `step`
+--  → remains true
+
+-- Progress
+--  → remains true
+
+-- Preservation
+--  → remains true
+
+-- It preserves all properties in this case.
+-- It just enables to reduce formerly unreducible terms like (`zero · `zero),
+-- which were the case of Stuck.
