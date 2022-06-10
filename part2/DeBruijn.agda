@@ -167,8 +167,8 @@ sucᶜ = ƛ `suc (# 0)
 -- Exercise `mul`
 
 mul : ∀ {Γ} → Γ ⊢ `ℕ ⇒ `ℕ ⇒ `ℕ
-mul = μ ƛ ƛ (case (# 1) `zero (plus · # 2 · (# 3 · # 0 · # 1)) )
-
+mul = μ ƛ ƛ (case (# 1) `zero (plus · # 1 · (# 3 · # 0 · # 1)) )
+-- [* m n] case m (zero) ([* m n m'] (plus n (* m' n)
 
 2*2 : ∀ {Γ} → Γ ⊢ `ℕ
 2*2 = mul · two · two
@@ -435,3 +435,140 @@ _ =
   —→⟨ β-ƛ (V-suc (V-suc (V-suc V-zero))) ⟩
     `suc `suc `suc `suc `zero
   ∎
+
+
+-- Exercise `V¬—→`
+  -- V-ƛ : ∀ {Γ A B} {N : Γ , A ⊢ B}
+
+V¬—→ : ∀ {Γ A} {N M : Γ ⊢ A}
+  → Value M
+    ----------
+  → ¬ (M —→ N)
+V¬—→ V-ƛ ()
+V¬—→ V-zero ()
+V¬—→ (V-suc VM) = λ { (ξ-suc M→N) → V¬—→ VM M→N }
+
+
+----
+
+data Progress {A} (M : ∅ ⊢ A) : Set where
+
+  step : ∀ {N : ∅ ⊢ A}
+    → M —→ N
+      ----------
+    → Progress M
+
+  done :
+      Value M
+      ----------
+    → Progress M
+
+progress : ∀ {A} → (M : ∅ ⊢ A) → Progress M
+progress (ƛ N) = done V-ƛ
+progress (L · M) with progress L
+... | step L→L′ = step (ξ-·₁ L→L′)
+... | done V-ƛ with progress M
+...     | step M→M′ = step (ξ-·₂ V-ƛ M→M′)
+...     | done VM = step (β-ƛ VM)
+progress `zero = done V-zero
+progress (`suc M) with progress M
+... | step M→M′ = step (ξ-suc M→M′)
+... | done VM = done (V-suc VM)
+progress (case L M N) with progress L
+... | step L→L′ = step (ξ-case L→L′)
+... | done V-zero = step β-zero
+... | done (V-suc VL) = step (β-suc VL)
+progress (μ M) = step β-μ
+
+
+----
+
+record Gas : Set where
+  constructor gas
+  field
+    amount : ℕ
+
+data Finished {Γ A} (N : Γ ⊢ A) : Set where
+
+  done :
+      Value N
+      ----------
+    → Finished N
+
+  out-of-gas :
+      ----------
+      Finished N
+
+data Steps {A} : ∅ ⊢ A → Set where
+
+  steps : {L N : ∅ ⊢ A}
+    → L —↠ N
+    → Finished N
+      ----------
+    → Steps L
+
+eval : ∀ {A}
+  → Gas
+  → (L : ∅ ⊢ A)
+    -----------
+  → Steps L
+eval (gas zero) L = steps (L ∎) out-of-gas
+eval (gas (suc amount)) L with progress L
+... | done VL = steps (L ∎) (done VL)
+... | step {M} L→M with eval (gas amount) M
+...   | steps M↠N fin = steps (L —→⟨ L→M ⟩ M↠N) fin
+
+
+----
+
+sucμ : ∅ ⊢ `ℕ
+sucμ = μ (`suc (# 0))
+
+_ : eval (gas 3) sucμ ≡
+  steps
+  (μ `suc ` Z
+  —→⟨ β-μ ⟩
+  `suc (μ `suc ` Z)
+  —→⟨ ξ-suc β-μ ⟩
+  `suc (`suc (μ `suc ` Z))
+  —→⟨ ξ-suc (ξ-suc β-μ) ⟩
+  `suc (`suc (`suc (μ `suc ` Z)))
+  ∎)
+  out-of-gas
+_ = refl
+
+_ : eval (gas 100) (twoᶜ · sucᶜ · `zero) ≡
+  steps
+  ((ƛ (ƛ ` (S Z) · (` (S Z) · ` Z))) · (ƛ `suc ` Z) · `zero
+  —→⟨ ξ-·₁ (β-ƛ V-ƛ) ⟩
+  (ƛ (ƛ `suc ` Z) · ((ƛ `suc ` Z) · ` Z)) · `zero
+  —→⟨ β-ƛ V-zero ⟩
+  (ƛ `suc ` Z) · ((ƛ `suc ` Z) · `zero)
+  —→⟨ ξ-·₂ V-ƛ (β-ƛ V-zero) ⟩
+  (ƛ `suc ` Z) · `suc `zero
+  —→⟨ β-ƛ (V-suc V-zero) ⟩
+  `suc (`suc `zero)
+  ∎)
+  (done (V-suc (V-suc V-zero)))
+_ = refl
+
+
+-- I will omit the steps for the next expressions because they are too long.
+-- To check if they are right, normalize the lhs with `C-c n`.
+-- To paste in the minibuffer, hit `C-y`.
+
+-- _ : eval (gas 100) (plus · two · two) ≡
+--   steps (...) (done (V-suc (V-suc (V-suc (V-suc V-zero)))))
+-- _ = refl
+
+
+-- _ : eval (gas 100) (plusᶜ · twoᶜ · twoᶜ · sucᶜ · `zero) ≡
+--   steps (...) (done (V-suc (V-suc (V-suc (V-suc V-zero)))))
+-- _ = refl
+
+
+-- Exercise `mul-example`
+
+-- _ : eval (gas 100) (mul · two · two) ≡
+--   steps (...) (done (V-suc (V-suc (V-suc (V-suc V-zero)))))
+-- _ = refl
