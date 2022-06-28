@@ -161,6 +161,13 @@ data _⊢_ : Context → Type → Set where
       ------
     → Γ ⊢ `⊤
 
+  -- unit alternative
+  case⊤ : ∀ {Γ A}
+    → Γ ⊢ `⊤
+    → Γ ⊢ A
+      ------
+    → Γ ⊢ A
+
 
 length : Context → ℕ
 length ∅ = zero
@@ -210,6 +217,7 @@ rename ρ (`inj₁ M) = `inj₁ (rename ρ M)
 rename ρ (`inj₂ N) = `inj₂ (rename ρ N)
 rename ρ (case⊎ L M N) = case⊎ (rename ρ L) (rename (ext ρ) M) (rename (ext ρ) N)
 rename ρ `tt = `tt
+rename ρ (case⊤ L M) = case⊤ (rename ρ L) (rename ρ M)
 
 exts : ∀ {Γ Δ}
   → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
@@ -240,6 +248,7 @@ subst σ (`inj₁ M) = `inj₁ (subst σ M)
 subst σ (`inj₂ N) = `inj₂ (subst σ N)
 subst σ (case⊎ L M N) = case⊎ (subst σ L) (subst (exts σ) M) (subst (exts σ) N)
 subst σ `tt = `tt
+subst σ (case⊤ L M) = case⊤ (subst σ L) (subst σ M)
 
 
 ----
@@ -463,6 +472,16 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
       --------------------------------------------
     → case⊎ (`inj₂ V) M N —→ N [ V ]
 
+  -- unit type alternative
+  ξ-case⊤ : ∀ {Γ A} {L L′ : Γ ⊢ `⊤} {M : Γ ⊢ A}
+    → L —→ L′
+      -------------------------------------
+    → case⊤ L M —→ case⊤ L′ M
+
+  β-case⊤ : ∀ {Γ A} {M : Γ ⊢ A}
+      -----------------------
+    → case⊤ `tt M —→ M
+
 
 ----
 
@@ -573,6 +592,9 @@ progress (case⊎ L M N) with progress L
 ... | done (V-inj₁ VM) = step (β-inj₁ VM)
 ... | done (V-inj₂ VN) = step (β-inj₂ VN)
 progress `tt = done V-tt
+progress (case⊤ L M) with progress L
+... | step L→L′ = step (ξ-case⊤ L→L′)
+... | done V-tt = step β-case⊤
 
 
 ----
@@ -711,3 +733,7 @@ to×⊤ = ƛ `⟨ # 0 , `tt ⟩
 
 from×⊤ : ∀ {A} → ∅ ⊢ A `× `⊤ ⇒ A
 from×⊤ = ƛ `proj₁ (# 0)
+
+
+from×⊤-case : ∀ {A} → ∅ ⊢ A `× `⊤ ⇒ A
+from×⊤-case = ƛ case× (# 0) (case⊤ (# 0) (# 1))
