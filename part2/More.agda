@@ -32,6 +32,7 @@ data Type : Set where
   Nat : Type
   _`×_ : Type → Type → Type
   _`⊎_ : Type → Type → Type
+  `⊤ : Type
 
 
 data Context : Set where
@@ -155,6 +156,12 @@ data _⊢_ : Context → Type → Set where
       ---------
     → Γ ⊢ C
 
+  -- unit type
+  `tt : ∀ {Γ}
+      ------
+    → Γ ⊢ `⊤
+
+
 length : Context → ℕ
 length ∅ = zero
 length (Γ , _) = suc (length Γ)
@@ -202,6 +209,7 @@ rename ρ (case× L M) = case× (rename ρ L) (rename (ext (ext ρ)) M)
 rename ρ (`inj₁ M) = `inj₁ (rename ρ M)
 rename ρ (`inj₂ N) = `inj₂ (rename ρ N)
 rename ρ (case⊎ L M N) = case⊎ (rename ρ L) (rename (ext ρ) M) (rename (ext ρ) N)
+rename ρ `tt = `tt
 
 exts : ∀ {Γ Δ}
   → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
@@ -231,6 +239,7 @@ subst σ (case× L M) = case× (subst σ L) (subst (exts (exts σ)) M)
 subst σ (`inj₁ M) = `inj₁ (subst σ M)
 subst σ (`inj₂ N) = `inj₂ (subst σ N)
 subst σ (case⊎ L M N) = case⊎ (subst σ L) (subst (exts σ) M) (subst (exts σ) N)
+subst σ `tt = `tt
 
 
 ----
@@ -302,6 +311,11 @@ data Value : ∀ {Γ A} → Γ ⊢ A → Set where
     → Value W
       ---------------
     → Value (`inj₂ {Γ} {A} {B} W)
+
+  -- unit type
+  V-tt : ∀ {Γ}
+      ---------------
+    → Value (`tt {Γ})
 
 ----
 
@@ -489,6 +503,7 @@ V¬—→ V-con = λ ()
 V¬—→ V-⟨ VM , VN ⟩ = λ { (ξ-⟨,⟩₁ M→M′) → V¬—→ VM M→M′ ; (ξ-⟨,⟩₂ VM N→N′) → V¬—→ VN N→N′ }
 V¬—→ (V-inj₁ VM) = λ { (ξ-inj₁ M→M′) → V¬—→ VM M→M′ }
 V¬—→ (V-inj₂ VN) = λ { (ξ-inj₂ N→N′) → V¬—→ VN N→N′ }
+V¬—→ V-tt = λ ()
 
 ----
 
@@ -557,6 +572,7 @@ progress (case⊎ L M N) with progress L
 ... | step L→L′ = step (ξ-case⊎ L→L′)
 ... | done (V-inj₁ VM) = step (β-inj₁ VM)
 ... | done (V-inj₂ VN) = step (β-inj₂ VN)
+progress `tt = done V-tt
 
 
 ----
@@ -688,3 +704,10 @@ _ =
 
 swap⊎ : ∀ {A B} → ∅ ⊢ A `⊎ B ⇒ B `⊎ A
 swap⊎ = ƛ case⊎ (# 0) (`inj₂ (# 0)) (`inj₁ (# 0))
+
+
+to×⊤ : ∀ {A} → ∅ ⊢ A ⇒ A `× `⊤
+to×⊤ = ƛ `⟨ # 0 , `tt ⟩
+
+from×⊤ : ∀ {A} → ∅ ⊢ A `× `⊤ ⇒ A
+from×⊤ = ƛ `proj₁ (# 0)
