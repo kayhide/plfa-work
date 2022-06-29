@@ -15,6 +15,7 @@ infixl 5 _,_
 infixr 7 _⇒_
 infixr 9 _`×_
 infixr 8 _`⊎_
+infixr 9 _`∷_
 
 infix  5 ƛ_
 infix  5 μ_
@@ -34,6 +35,7 @@ data Type : Set where
   _`⊎_ : Type → Type → Type
   `⊤ : Type
   `⊥ : Type
+  `List : Type → Type
 
 
 data Context : Set where
@@ -175,6 +177,24 @@ data _⊢_ : Context → Type → Set where
       ------
     → Γ ⊢ A
 
+  -- lists
+  `[] : ∀ {Γ A}
+      -----------
+    → Γ ⊢ `List A
+
+  _`∷_ : ∀ {Γ A}
+    → Γ ⊢ A
+    → Γ ⊢ `List A
+      -----------
+    → Γ ⊢ `List A
+
+  caseL : ∀ {Γ A B}
+    → Γ ⊢ `List A
+    → Γ ⊢ B
+    → Γ , A , `List A ⊢ B
+      -------------------
+    → Γ ⊢ B
+
 
 length : Context → ℕ
 length ∅ = zero
@@ -226,6 +246,9 @@ rename ρ (case⊎ L M N) = case⊎ (rename ρ L) (rename (ext ρ) M) (rename (e
 rename ρ `tt = `tt
 rename ρ (case⊤ L M) = case⊤ (rename ρ L) (rename ρ M)
 rename ρ (case⊥ L) = case⊥ (rename ρ L)
+rename ρ `[] = `[]
+rename ρ (M `∷ N) = rename ρ M `∷ rename ρ N
+rename ρ (caseL L M N) = caseL (rename ρ L) (rename ρ M) (rename (ext (ext ρ)) N)
 
 exts : ∀ {Γ Δ}
   → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
@@ -258,6 +281,9 @@ subst σ (case⊎ L M N) = case⊎ (subst σ L) (subst (exts σ) M) (subst (exts
 subst σ `tt = `tt
 subst σ (case⊤ L M) = case⊤ (subst σ L) (subst σ M)
 subst σ (case⊥ L) = case⊥ (subst σ L)
+subst σ `[] = `[]
+subst σ (M `∷ N) = subst σ M `∷ subst σ N
+subst σ (caseL L M N) = caseL (subst σ L) (subst σ M) (subst (exts (exts σ)) N)
 
 
 ----
@@ -334,6 +360,16 @@ data Value : ∀ {Γ A} → Γ ⊢ A → Set where
   V-tt : ∀ {Γ}
       ---------------
     → Value (`tt {Γ})
+
+  -- lists
+  V-[] : ∀ {Γ A}
+    → Value (`[] {Γ} {A})
+
+  V-[_∷_] : ∀ {Γ A} {V : Γ ⊢ A} {W : Γ ⊢ `List A}
+    → Value V
+    → Value W
+      ---------------
+    → Value (V `∷ W)
 
 ----
 
@@ -497,6 +533,33 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
       -------------------
     → case⊥ {Γ} {A} L —→ case⊥ L′
 
+  -- lists
+  ξ-∷₁ : ∀ {Γ A} {M M′ : Γ ⊢ A} {N : Γ ⊢ `List A}
+    → M —→ M′
+      -------------------
+    → M `∷ N —→ M′ `∷ N
+
+  ξ-∷₂ : ∀ {Γ A} {V : Γ ⊢ A} {N N′ : Γ ⊢ `List A}
+    → Value V
+    → N —→ N′
+      -------------------
+    → V `∷ N —→ V `∷ N′
+
+  ξ-caseL : ∀ {Γ A B} {L L′ : Γ ⊢ `List A} {M : Γ ⊢ B} {N : Γ , A , `List A ⊢ B}
+    → L —→ L′
+      --------------------------
+    → caseL L M N —→ caseL L′ M N
+
+  β-[] : ∀ {Γ A B} {M : Γ ⊢ B} {N : Γ , A , `List A ⊢ B}
+      ------------------
+    → caseL `[] M N —→ M
+
+  β-∷ : ∀ {Γ A B} {V : Γ ⊢ A} {W : Γ ⊢ `List A} {M : Γ ⊢ B} {N : Γ , A , `List A ⊢ B}
+    → Value V
+    → Value W
+      ----------------------------------
+    → caseL (V `∷ W) M N —→ N [ V ][ W ]
+
 
 ----
 
@@ -538,6 +601,9 @@ V¬—→ V-⟨ VM , VN ⟩ = λ { (ξ-⟨,⟩₁ M→M′) → V¬—→ VM M�
 V¬—→ (V-inj₁ VM) = λ { (ξ-inj₁ M→M′) → V¬—→ VM M→M′ }
 V¬—→ (V-inj₂ VN) = λ { (ξ-inj₂ N→N′) → V¬—→ VN N→N′ }
 V¬—→ V-tt = λ ()
+V¬—→ V-[] = λ ()
+V¬—→ V-[ VM ∷ VN ] = λ { (ξ-∷₁ M→M′) → V¬—→ VM M→M′ ; (ξ-∷₂ VM N→N′) → V¬—→ VN N→N′ }
+
 
 ----
 
@@ -612,6 +678,16 @@ progress (case⊤ L M) with progress L
 ... | done V-tt = step β-case⊤
 progress (case⊥ L) with progress L
 ... | step L→L′ = step (ξ-case⊥ L→L′)
+progress `[] = done V-[]
+progress (M `∷ N) with progress M
+... | step M→M′ = step (ξ-∷₁ M→M′)
+... | done VM with progress N
+...   | step N→N′ = step (ξ-∷₂ VM N→N′)
+...   | done VN = done V-[ VM ∷ VN ]
+progress (caseL L M N) with progress L
+... | step L→L′ = step (ξ-caseL L→L′)
+... | done V-[] = step β-[]
+... | done V-[ VV ∷ VW ] = step (β-∷ VV VW)
 
 
 ----
@@ -761,3 +837,7 @@ to⊎⊥ = ƛ `inj₁ (# 0)
 
 from⊎⊥ : ∀ {A} → ∅ ⊢ A `⊎ `⊥ ⇒ A
 from⊎⊥ = ƛ case⊎ (# 0) (# 0) (case⊥ (# 0))
+
+
+mapL : ∀ {A B} → ∅ ⊢ (A ⇒ B) ⇒ `List A ⇒ `List B
+mapL = μ ƛ ƛ caseL (# 0) `[] ((# 3 · # 1) `∷ (# 4 · # 3 · # 0))
