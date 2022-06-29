@@ -33,6 +33,7 @@ data Type : Set where
   _`×_ : Type → Type → Type
   _`⊎_ : Type → Type → Type
   `⊤ : Type
+  `⊥ : Type
 
 
 data Context : Set where
@@ -168,6 +169,12 @@ data _⊢_ : Context → Type → Set where
       ------
     → Γ ⊢ A
 
+  -- empty type
+  case⊥ : ∀ {Γ A}
+    → Γ ⊢ `⊥
+      ------
+    → Γ ⊢ A
+
 
 length : Context → ℕ
 length ∅ = zero
@@ -218,6 +225,7 @@ rename ρ (`inj₂ N) = `inj₂ (rename ρ N)
 rename ρ (case⊎ L M N) = case⊎ (rename ρ L) (rename (ext ρ) M) (rename (ext ρ) N)
 rename ρ `tt = `tt
 rename ρ (case⊤ L M) = case⊤ (rename ρ L) (rename ρ M)
+rename ρ (case⊥ L) = case⊥ (rename ρ L)
 
 exts : ∀ {Γ Δ}
   → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
@@ -249,6 +257,7 @@ subst σ (`inj₂ N) = `inj₂ (subst σ N)
 subst σ (case⊎ L M N) = case⊎ (subst σ L) (subst (exts σ) M) (subst (exts σ) N)
 subst σ `tt = `tt
 subst σ (case⊤ L M) = case⊤ (subst σ L) (subst σ M)
+subst σ (case⊥ L) = case⊥ (subst σ L)
 
 
 ----
@@ -482,6 +491,12 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
       -----------------------
     → case⊤ `tt M —→ M
 
+  -- empty type
+  ξ-case⊥ : ∀ {Γ A} {L L′ : Γ ⊢ `⊥}
+    → L —→ L′
+      -------------------
+    → case⊥ {Γ} {A} L —→ case⊥ L′
+
 
 ----
 
@@ -595,6 +610,8 @@ progress `tt = done V-tt
 progress (case⊤ L M) with progress L
 ... | step L→L′ = step (ξ-case⊤ L→L′)
 ... | done V-tt = step β-case⊤
+progress (case⊥ L) with progress L
+... | step L→L′ = step (ξ-case⊥ L→L′)
 
 
 ----
@@ -737,3 +754,10 @@ from×⊤ = ƛ `proj₁ (# 0)
 
 from×⊤-case : ∀ {A} → ∅ ⊢ A `× `⊤ ⇒ A
 from×⊤-case = ƛ case× (# 0) (case⊤ (# 0) (# 1))
+
+
+to⊎⊥ : ∀ {A} → ∅ ⊢ A ⇒ A `⊎ `⊥
+to⊎⊥ = ƛ `inj₁ (# 0)
+
+from⊎⊥ : ∀ {A} → ∅ ⊢ A `⊎ `⊥ ⇒ A
+from⊎⊥ = ƛ case⊎ (# 0) (# 0) (case⊥ (# 0))
