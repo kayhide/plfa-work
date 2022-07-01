@@ -841,3 +841,37 @@ from⊎⊥ = ƛ case⊎ (# 0) (# 0) (case⊥ (# 0))
 
 mapL : ∀ {A B} → ∅ ⊢ (A ⇒ B) ⇒ `List A ⇒ `List B
 mapL = μ ƛ ƛ caseL (# 0) `[] ((# 3 · # 1) `∷ (# 4 · # 3 · # 0))
+
+
+-- Exercise `double-subst`
+
+postulate
+  double-subst : ∀ {Γ A B C} {V : Γ ⊢ A} {W : Γ ⊢ B} {N : Γ , A , B ⊢ C}
+    → N [ V ][ W ] ≡ (N [ rename S_ W ]) [ V ]
+
+
+----
+
+two : ∀ {Γ} → Γ ⊢ `ℕ
+two = `suc `suc `zero
+
+plus : ∀ {Γ} → Γ ⊢ `ℕ ⇒ `ℕ ⇒ `ℕ
+plus = μ ƛ ƛ (case (# 1) (# 0) (`suc (# 3 · # 0 · # 1)))
+
+2+2 : ∀ {Γ} → Γ ⊢ `ℕ
+2+2 = plus · two · two
+
+Ch : Type → Type
+Ch A = (A ⇒ A) ⇒ A ⇒ A
+
+twoᶜ : ∀ {Γ A} → Γ ⊢ Ch A
+twoᶜ = ƛ ƛ (# 1 · (# 1 · # 0))
+
+plusᶜ : ∀ {Γ A} → Γ ⊢ Ch A ⇒ Ch A ⇒ Ch A
+plusᶜ = ƛ ƛ ƛ ƛ (# 3 · # 1 · (# 2 · # 1 · # 0))
+
+sucᶜ : ∀ {Γ} → Γ ⊢ `ℕ ⇒ `ℕ
+sucᶜ = ƛ `suc (# 0)
+
+2+2ᶜ : ∀ {Γ} → Γ ⊢ `ℕ
+2+2ᶜ = plusᶜ · twoᶜ · twoᶜ · sucᶜ · `zero
