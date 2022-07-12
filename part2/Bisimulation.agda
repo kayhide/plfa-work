@@ -117,3 +117,93 @@ M~N→M†≡N (L · M) (L† · M†) {LM†?} (~L ~· ~M) with toWitness LM†
 M~N→M†≡N (`let M N) ((ƛ N†) · M†) {MN†?} (~let ~M ~N) with toWitness MN†?
 ... | ⟨ (ƛ Y†) · X† , ~let ~X ~Y ⟩ with M~N→M†≡N M M† {fromWitness ⟨ X† , ~X ⟩} ~M | M~N→M†≡N N N† {fromWitness ⟨ Y† , ~Y ⟩} ~N
 ... | refl | refl = refl
+
+
+----
+
+~val : ∀ {Γ A} {M M† : Γ ⊢ A}
+  → M ~ M†
+  → Value M
+    --------
+  → Value M†
+~val (~ƛ _) V-ƛ = V-ƛ
+
+
+-- Exercise `~val⁻¹`
+
+~val⁻¹ : ∀ {Γ A} {M M† : Γ ⊢ A}
+  → M ~ M†
+  → Value M†
+    --------
+  → Value M
+~val⁻¹ (~ƛ _) V-ƛ = V-ƛ
+
+
+----
+
+~rename : ∀ {Γ Δ}
+  → (ρ : ∀ {A} → Γ ∋ A → Δ ∋ A)
+  → (∀ {A} {M M† : Γ ⊢ A} → M ~ M† → rename ρ M ~ rename ρ M†)
+~rename ρ ~` = ~`
+~rename ρ (~ƛ ~N) = ~ƛ ~rename (ext ρ) ~N
+~rename ρ (~L ~· ~M) = ~rename ρ ~L ~· ~rename ρ ~M
+~rename ρ (~let ~M ~N) = ~let (~rename ρ ~M) (~rename (ext ρ) ~N)
+
+
+~exts : ∀ {Γ Δ}
+  → {σ : ∀ {A} → Γ ∋ A → Δ ⊢ A}
+  → {σ† : ∀ {A} → Γ ∋ A → Δ ⊢ A}
+  → (∀ {A} → (x : Γ ∋ A) → σ x ~ σ† x)
+    ---------------------------------------------------------
+  → (∀ {A B} (x : Γ , B ∋ A) → exts σ x ~ exts σ† x)
+~exts ~σ Z = ~`
+~exts ~σ (S x) = ~rename S_ (~σ x)
+
+~subst : ∀ {Γ Δ}
+  → {σ : ∀ {A} → Γ ∋ A → Δ ⊢ A}
+  → {σ† : ∀ {A} → Γ ∋ A → Δ ⊢ A}
+  → (∀ {A} → (x : Γ ∋ A) → σ x ~ σ† x)
+    ---------------------------------------------------------
+  → (∀ {A} {M M† : Γ ⊢ A} → M ~ M† → subst σ M ~ subst σ† M†)
+~subst ~σ (~` {x = x}) = ~σ x
+~subst ~σ (~ƛ ~N) = ~ƛ ~subst (~exts ~σ) ~N
+~subst ~σ (~L ~· ~M) = ~subst ~σ ~L ~· ~subst ~σ ~M
+~subst ~σ (~let ~M ~N) = ~let (~subst ~σ ~M) (~subst (~exts ~σ) ~N)
+
+
+~sub : ∀ {Γ A B} {N N† : Γ , B ⊢ A} {M M† : Γ ⊢ B}
+  → N ~ N†
+  → M ~ M†
+    -----------------------
+  → (N [ M ]) ~ (N† [ M† ])
+~sub {Γ} {A} {B} ~N ~M = ~subst ~σ ~N
+  where
+    ~σ : ∀ {A} → (x : Γ , B ∋ A) → _ ~ _
+    ~σ Z = ~M
+    ~σ (S x) = ~`
+
+
+----
+
+data Leg {Γ A} (M† N : Γ ⊢ A) : Set where
+
+  leg : ∀ {N† : Γ ⊢ A}
+    → N ~ N†
+    → M† —→ N†
+      --------
+    → Leg M† N
+
+
+sim : ∀ {Γ A} {M M† N : Γ ⊢ A}
+  → M ~ M†
+  → M —→ N
+    --------
+  → Leg M† N
+sim (~L ~· ~M) (ξ-·₁ L—→) with sim ~L L—→
+... | leg ~L′ L†—→ = leg (~L′ ~· ~M) (ξ-·₁ L†—→)
+sim (~V ~· ~M) (ξ-·₂ VV M—→) with sim ~M M—→
+... | leg ~M′ M†—→ = leg (~V ~· ~M′) (ξ-·₂ (~val ~V  VV) M†—→)
+sim ((~ƛ ~N) ~· ~V) (β-ƛ VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
+sim (~let ~M ~N) (ξ-let M—→) with sim ~M M—→
+... | leg ~M′ M†—→ = leg (~let ~M′ ~N) (ξ-·₂ V-ƛ M†—→)
+sim (~let ~V ~N) (β-let VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
