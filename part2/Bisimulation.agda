@@ -207,3 +207,28 @@ sim ((~ƛ ~N) ~· ~V) (β-ƛ VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
 sim (~let ~M ~N) (ξ-let M—→) with sim ~M M—→
 ... | leg ~M′ M†—→ = leg (~let ~M′ ~N) (ξ-·₂ V-ƛ M†—→)
 sim (~let ~V ~N) (β-let VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
+
+
+-- Exercise `sim⁻¹`
+
+data Leg⁻¹ {Γ A} (M N† : Γ ⊢ A) : Set where
+
+  leg⁻¹ : ∀ {N : Γ ⊢ A}
+    → N ~ N†
+    → M —→ N
+      --------
+    → Leg⁻¹ M N†
+
+sim⁻¹ : ∀ {Γ A} {M M† N† : Γ ⊢ A}
+  → M ~ M†
+  → M† —→ N†
+    --------
+  → Leg⁻¹ M N†
+sim⁻¹ (~L ~· ~M) (ξ-·₁ L†—→) with sim⁻¹ ~L L†—→
+... | leg⁻¹ ~L′ L—→ = leg⁻¹ (~L′ ~· ~M) (ξ-·₁ L—→)
+sim⁻¹ (~V ~· ~M) (ξ-·₂ VV† M†—→) with sim⁻¹ ~M M†—→
+... | leg⁻¹ ~M′ M—→ = leg⁻¹ (~V ~· ~M′) (ξ-·₂ (~val⁻¹ ~V VV†) M—→)
+sim⁻¹ ((~ƛ ~N) ~· ~V) (β-ƛ VV†) = leg⁻¹ (~sub ~N ~V) (β-ƛ (~val⁻¹ ~V VV†))
+sim⁻¹ (~let ~M ~N) (ξ-·₂ V-ƛ M†—→) with sim⁻¹ ~M M†—→
+... | leg⁻¹ ~M′ M—→ = leg⁻¹ (~let ~M′ ~N) (ξ-let M—→)
+sim⁻¹ (~let ~V ~N) (β-ƛ VV†) = leg⁻¹ (~sub ~N ~V) (β-let (~val⁻¹ ~V VV†))
