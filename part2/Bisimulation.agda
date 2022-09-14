@@ -1,6 +1,7 @@
 module part2.Bisimulation where
 
 open import Data.Product using (Σ; ∃-syntax) renaming (_,_ to ⟨_,_⟩)
+open import Function using (_∘_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (True; toWitness; fromWitness)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -256,11 +257,36 @@ M~N→M†≡N (case× L M) ((ƛ ƛ M†) · `proj₁ L† · `proj₂ L†) {LM
 
 ----
 
+infixr 2 _—↠⟨_⟩_
+
+_—↠⟨_⟩_ : ∀ {Γ A} (L : Γ ⊢ A) {M N : Γ ⊢ A}
+  → L —↠ M
+  → M —↠ N
+    ------
+  → L —↠ N
+L —↠⟨ .L ∎ ⟩ M↠N = M↠N
+L —↠⟨ (_—→⟨_⟩_ .L {M = L′} L→L′ L′↠M) ⟩ M↠N = L —→⟨ L→L′ ⟩ L′ —↠⟨ L′↠M ⟩ M↠N
+
+
+
+pure : ∀ {Γ A} {M N : Γ ⊢ A} → M —→ N → M —↠ N
+pure {M = M} {N = N} M→N = M —→⟨ M→N ⟩ N ∎
+
+infixr 6 _<$>_
+
+_<$>_ : ∀ {Γ A B} {L M : Γ ⊢ A} {Lift : Γ ⊢ A → Γ ⊢ B}
+  → ({X Y : Γ ⊢ A} → X —→ Y → Lift X —→ Lift Y)
+  → L —↠ M
+  → Lift L —↠ Lift M
+_<$>_ {Lift = Lift} f (M ∎) = Lift M ∎
+_<$>_ {Lift = Lift} f (L —→⟨ L→M ⟩ M↠) = Lift L —→⟨ f L→M ⟩ (f <$> M↠)
+
+
 data Leg {Γ A} (M† N : Γ ⊢ A) : Set where
 
   leg : ∀ {N† : Γ ⊢ A}
     → N ~ N†
-    → M† —→ N†
+    → M† —↠ N†
       --------
     → Leg M† N
 
@@ -271,26 +297,37 @@ sim : ∀ {Γ A} {M M† N : Γ ⊢ A}
     --------
   → Leg M† N
 sim (~L ~· ~M) (ξ-·₁ L—→) with sim ~L L—→
-... | leg ~L′ L†—→ = leg (~L′ ~· ~M) (ξ-·₁ L†—→)
+... | leg ~L′ L†—→ = leg (~L′ ~· ~M) (ξ-·₁ <$> L†—→)
 sim (~V ~· ~M) (ξ-·₂ VV M—→) with sim ~M M—→
-... | leg ~M′ M†—→ = leg (~V ~· ~M′) (ξ-·₂ (~val ~V  VV) M†—→)
-sim ((~ƛ ~N) ~· ~V) (β-ƛ VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
+... | leg ~M′ M†—→ = leg (~V ~· ~M′) (ξ-·₂ (~val ~V VV) <$> M†—→)
+sim ((~ƛ ~N) ~· ~V) (β-ƛ VV) = leg (~sub ~N ~V) (pure (β-ƛ (~val ~V VV)))
 sim (~let ~M ~N) (ξ-let M—→) with sim ~M M—→
-... | leg ~M′ M†—→ = leg (~let ~M′ ~N) (ξ-·₂ V-ƛ M†—→)
-sim (~let ~V ~N) (β-let VV) = leg (~sub ~N ~V) (β-ƛ (~val ~V VV))
+... | leg ~M′ M†—→ = leg (~let ~M′ ~N) (ξ-·₂ V-ƛ <$> M†—→)
+sim (~let ~V ~N) (β-let VV) = leg (~sub ~N ~V) (pure (β-ƛ (~val ~V VV)))
 sim ~⟨ ~M , ~N ⟩ (ξ-⟨,⟩₁ M—→) with sim ~M M—→
-... | leg ~M′ M†—→ = leg ~⟨ ~M′ , ~N ⟩ (ξ-⟨,⟩₁ M†—→)
+... | leg ~M′ M†—→ = leg ~⟨ ~M′ , ~N ⟩ (ξ-⟨,⟩₁ <$> M†—→)
 sim ~⟨ ~V , ~N ⟩ (ξ-⟨,⟩₂ VV N—→) with sim ~N N—→
-... | leg ~N′ N†—→ = leg ~⟨ ~V , ~N′ ⟩ (ξ-⟨,⟩₂ (~val ~V VV) N†—→)
+... | leg ~N′ N†—→ = leg ~⟨ ~V , ~N′ ⟩ (ξ-⟨,⟩₂ (~val ~V VV) <$> N†—→)
 sim (~proj₁ ~L) (ξ-proj₁ L—→) with sim ~L L—→
-... | leg ~L′ L†—→ = leg (~proj₁ ~L′) (ξ-proj₁ L†—→)
-sim (~proj₁ ~⟨ ~VV , ~VW ⟩) (β-proj₁ VV VW) = leg ~VV (β-proj₁ (~val ~VV VV) (~val ~VW VW))
+... | leg ~L′ L†—→ = leg (~proj₁ ~L′) (ξ-proj₁ <$> L†—→)
+sim (~proj₁ ~⟨ ~VV , ~VW ⟩) (β-proj₁ VV VW) = leg ~VV (pure (β-proj₁ (~val ~VV VV) (~val ~VW VW)))
 sim (~proj₂ ~L) (ξ-proj₂ L—→) with sim ~L L—→
-... | leg ~L′ L†—→ = leg (~proj₂ ~L′) (ξ-proj₂ L†—→)
-sim (~proj₂ ~⟨ ~VV , ~VW ⟩) (β-proj₂ VV VW) = leg ~VW (β-proj₂ (~val ~VV VV) (~val ~VW VW))
-sim (~case× ~L ~M) (ξ-case× L—→) with sim ~L L—→
-... | leg ~L′ L†—→ = leg (~case× ~L′ ~M) {!!}
-sim (~case× ~⟨ ~VV , ~VW ⟩ ~M) (β-case× VV VW) = leg ? ?
+... | leg ~L′ L†—→ = leg (~proj₂ ~L′) (ξ-proj₂ <$> L†—→)
+sim (~proj₂ ~⟨ ~VV , ~VW ⟩) (β-proj₂ VV VW) = leg ~VW (pure (β-proj₂ (~val ~VV VV) (~val ~VW VW)))
+sim (~case× {L† = L†} {M† = M†} ~L ~M) (ξ-case× L—→) with sim ~L L—→
+... | leg {N† = L′†} ~L′ L†—→ = leg (~case× ~L′ ~M) (
+        begin
+          (ƛ ƛ M†) · `proj₁ L† · `proj₂ L†
+        —↠⟨ ξ-·₁ ∘ ξ-·₂ V-ƛ ∘ ξ-proj₁ <$> L†—→ ⟩
+          (ƛ ƛ M†) · `proj₁ L′† · `proj₂ L†
+        —↠⟨ {!!} <$> L†—→ ⟩
+          (ƛ ƛ M†) · `proj₁ L′† · `proj₂ L′†
+        ∎
+        )
+
+sim (~case× {M = M} (~⟨_,_⟩ {M = V} {N = W} ~VV ~VW) ~M) (β-case× VV VW)
+    rewrite double-subst {V = V} {W = W} {N = M}
+      = leg (~sub (~sub ~M (~rename S_ ~VW)) ~VV) {!!}
 
 
 -- -- Exercise `sim⁻¹`
